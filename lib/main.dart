@@ -1062,7 +1062,6 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
   }
 
 
-
   void _showMultiplierMenu(BuildContext context) {
     setState(() {
       // Hier wird der Index des aktuellen Multiplikators gefunden
