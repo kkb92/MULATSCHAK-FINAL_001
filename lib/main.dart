@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+
 void main() {
   runApp(MyApp());
 }
@@ -283,89 +284,13 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
 
 
   void showRoundResults() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        Map<String, int> totalPointsPerPlayer = calculateTotalPointsPerPlayer();
-
-        return Dialog(
-          child: Container(
-            padding: EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'PUNKTEÜBERSICHT',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 25.0),
-                Expanded(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: roundResults.length,
-                    itemBuilder: (context, index) {
-                      RoundResult roundResult = roundResults[index];
-                      return Card(
-                        child: Column(
-                          children: [
-                            Text(
-                              'RUNDE ${roundResult.roundNumber}',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: roundResult.playerPoints.entries.map((entry) {
-                                // Begrenze auf 0 Punkte
-                                int displayedPoints = entry.value < 0 ? 0 : entry.value;
-
-                                return Text(
-                                  entry.key == 'Spieler 1' || entry.key == 'Spieler 2'
-                                      ? '$displayedPoints'
-                                      : '${entry.key}: $displayedPoints ',
-                                  style: TextStyle(
-                                    fontWeight: entry.key == 'Spieler 1' || entry.key == 'Spieler 2'
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                SizedBox(height: 30.0),
-                Text(
-                  'GESAMTPUNKTE',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: totalPointsPerPlayer.entries.map((entry) {
-                    // Begrenze auf 0 Punkte
-                    int displayedPoints = entry.value < 0 ? 0 : entry.value;
-
-                    return Text(
-                      '${entry.key}: $displayedPoints ',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    );
-                  }).toList(),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text('OK'),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => PointsOverviewPage(
+          totalPointsPerPlayer: calculateTotalPointsPerPlayer(),
+          roundResults: roundResults,
+        ),
+      ),
     );
   }
 
@@ -434,7 +359,7 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
       for (var player in widget.players) {
         if (player != selectedPlayer) {
           player.points -= 20 * selectedMultiplier!.multiplier;
-          if (player.points < 0) {
+          if (player.points <= 0) {
             player.points = 0;
           }
         }
@@ -444,12 +369,20 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
       selectedMultiplier = pointsMultipliers[0];
       selectedValue = 'x${selectedMultiplier!.multiplier}';
     });
+
+    // Check if any player's points reach 0 or fall below
+    bool anyPlayerBelowZero = widget.players.any((player) => player.points <= 0);
+
+    // Trigger the endRound function if needed
+    if (anyPlayerBelowZero) {
+      endRound();
+    }
   }
 
   void _applyMMinusConfirmed() {
     setState(() {
       selectedPlayer!.points -= 20 * selectedMultiplier!.multiplier;
-      if (selectedPlayer!.points < 0) {
+      if (selectedPlayer!.points <= 0) {
         selectedPlayer!.points = 0;
       }
 
@@ -457,6 +390,9 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
       for (var player in widget.players) {
         if (player != selectedPlayer) {
           player.points += 20 * selectedMultiplier!.multiplier;
+          if (player.points <= 0) {
+            player.points = 0;
+          }
         }
       }
 
@@ -464,6 +400,14 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
       selectedMultiplier = pointsMultipliers[0];
       selectedValue = 'x${selectedMultiplier!.multiplier}';
     });
+
+    // Check if any player's points reach 0 or fall below
+    bool anyPlayerBelowZero = widget.players.any((player) => player.points <= 0);
+
+    // Trigger the endRound function if needed
+    if (anyPlayerBelowZero) {
+      endRound();
+    }
   }
 
   @override
@@ -501,8 +445,8 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
                 childAspectRatio: 1.0,
-                crossAxisSpacing: 8.0,
-                mainAxisSpacing: 8.0,
+                crossAxisSpacing: 0.1,
+                mainAxisSpacing: 0.1,
               ),
               itemCount: widget.players.length,
               itemBuilder: (context, index) {
@@ -522,92 +466,105 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
                       onLongPress: () {
                         _handleMinusButtonPress(currentPlayer);
                       },
-                      // Weitere Eigenschaften...
-                      child: Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.black,
-                            width: 1.0,
+                      child: Stack(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: Colors.black,
+                                width: 1.0,
+                              ),
+                              color: isSelected ? Colors.blue.withOpacity(0.3) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(0.0),
+                            ),
+                            child: Stack(
+                              children: [
+                                Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: SizedBox(
+                                    height: 110,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          '${currentPlayer.points}',
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 30,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          '${calculateTotalPointsPerPlayer()[currentPlayer.name]}', // Anzeige des Gesamtpunktestands
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          currentPlayer.name,
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 0,
+                                  left: 0,
+                                  child: InkWell(
+                                    onTap: () {
+                                      _handleLeftXButtonPress(currentPlayer);
+                                    },
+                                    child: ClipOval(
+                                      child: Container(
+                                        width: 40,
+                                        height: 40,
+                                        color: Colors.transparent,
+                                        child: Center(
+                                          child: Icon(
+                                            Icons.close,
+                                            color: Colors.black,
+                                            size: 24.0,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: InkWell(
+                                    onTap: () {
+                                      _handleRightXButtonPress(currentPlayer);
+                                    },
+                                    child: ClipOval(
+                                      child: Container(
+                                        width: 40,
+                                        height: 40,
+                                        color: Colors.transparent,
+                                        child: Center(
+                                          child: Icon(
+                                            Icons.close,
+                                            color: Colors.red,
+                                            size: 24.0,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          color: isSelected ? Colors.blue.withOpacity(0.3) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(0.0),
-                        ),
-                        child: Stack(
-                          children: [
-                            Align(
-                              alignment: Alignment.bottomCenter,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    currentPlayer.name,
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    '${currentPlayer.points}',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Positioned(
-                              top: 0,
-                              left: 0,
-                              child: InkWell(
-                                onTap: () {
-                                  _handleLeftXButtonPress(currentPlayer);
-                                },
-                                child: ClipOval(
-                                  child: Container(
-                                    width: 40,
-                                    height: 40,
-                                    color: Colors.transparent,
-                                    child: Center(
-                                      child: Icon(
-                                        Icons.close,
-                                        color: Colors.black,
-                                        size: 24.0,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            Positioned(
-                              top: 0,
-                              right: 0,
-                              child: InkWell(
-                                onTap: () {
-                                  _handleRightXButtonPress(currentPlayer);
-                                },
-                                child: ClipOval(
-                                  child: Container(
-                                    width: 40,
-                                    height: 40,
-                                    color: Colors.transparent,
-                                    child: Center(
-                                      child: Icon(
-                                        Icons.close,
-                                        color: Colors.red,
-                                        size: 24.0,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                        ],
                       ),
                     ),
                   );
@@ -627,8 +584,8 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
                   _showMultiplierMenu(context);
                 },
                 style: ElevatedButton.styleFrom(
-                  primary: selectedMultiplier != null ? Colors.blue[200] : Colors.grey[300],
-                  onPrimary: Colors.black,
+                  backgroundColor: selectedMultiplier != null ? Colors.blue[200] : Colors.grey[300],
+                  foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(0.0),
                     side: BorderSide(color: Colors.black),  // Fügen Sie diese Zeile hinzu
@@ -639,7 +596,7 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
                   selectedMultiplier != null
                       ? 'x${selectedMultiplier!.multiplier}'
                       : '*',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(fontSize: 20),
                 ),
               ),
               ElevatedButton(
@@ -651,11 +608,14 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(0.0),
-                    side: BorderSide(color: Colors.black),  // Fügen Sie diese Zeile hinzu
+                    side: BorderSide(color: Colors.black),
                   ),
                 ),
-                child: Text('M+'),
+                child: Text('M+',
+                  style: TextStyle(fontSize: 20), // Hier die Schriftgröße ändern
+                ),
               ),
+
 
               ElevatedButton(
                 onPressed: () {
@@ -666,10 +626,12 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(0.0),
-                    side: BorderSide(color: Colors.black),  // Fügen Sie diese Zeile hinzu
+                    side: BorderSide(color: Colors.black),
                   ),
                 ),
-                child: Text('M-'),
+                child: Text('M-',
+                  style: TextStyle(fontSize: 20), // Hier die Schriftgröße ändern
+                ),
               ),
             ],
           ),
@@ -696,7 +658,7 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
                 ),
                 child: Text(
                   '-1',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(fontSize: 20),
                 ),
               ),
               ElevatedButton(
@@ -715,7 +677,7 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
                 ),
                 child: Text(
                   '-2',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(fontSize: 20),
                 ),
               ),
               ElevatedButton(
@@ -734,7 +696,7 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
                 ),
                 child: Text(
                   '-3',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(fontSize: 20),
                 ),
               ),
               ElevatedButton(
@@ -753,7 +715,7 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
                 ),
                 child: Text(
                   '-4',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(fontSize: 20),
                 ),
               ),
               ElevatedButton(
@@ -772,7 +734,7 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
                 ),
                 child: Text(
                   '-5',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(fontSize: 20),
                 ),
               ),
             ],
@@ -781,60 +743,60 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
           SizedBox(height: 30),  // Abstand zwischen den Zahlenbuttons und den Anwenderbuttons
 
 
-      Padding(
-        padding: EdgeInsets.only(bottom: 16.0, top: 8.0),  // Fügen Sie unten und oben Platz hinzu
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                if (selectedPlayer != null &&
-                    selectedPointsOption != null &&
-                    selectedMultiplier != null) {
-                  _applyPointsToPlayer(selectedPlayer!, selectedPointsOption!.value);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey[300],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(0.0),
-                  side: BorderSide(color: Colors.black),  // Fügen Sie diese Zeile hinzu
+          Padding(
+            padding: EdgeInsets.only(bottom: 16.0, top: 8.0),  // Fügen Sie unten und oben Platz hinzu
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    if (selectedPlayer != null &&
+                        selectedPointsOption != null &&
+                        selectedMultiplier != null) {
+                      _applyPointsToPlayer(selectedPlayer!, selectedPointsOption!.value);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey[300],
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(0.0),
+                      side: BorderSide(color: Colors.black),  // Fügen Sie diese Zeile hinzu
+                    ),
+                  ),
+                  child: Text('ÜBERNEHMEN'),
                 ),
-              ),
-              child: Text('ÜBERNEHMEN'),
+                ElevatedButton(
+                  onPressed: () {
+                    endRound();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey[300],
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(0.0),
+                      side: BorderSide(color: Colors.black),  // Fügen Sie diese Zeile hinzu
+                    ),
+                  ),
+                  child: Text('NEUE RUNDE'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    resetRound();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey[300],
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(0.0),
+                      side: BorderSide(color: Colors.black),  // Fügen Sie diese Zeile hinzu
+                    ),
+                  ),
+                  child: Icon(Icons.refresh),
+                ),
+              ],
             ),
-            ElevatedButton(
-              onPressed: () {
-                endRound();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey[300],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(0.0),
-                  side: BorderSide(color: Colors.black),  // Fügen Sie diese Zeile hinzu
-                ),
-              ),
-              child: Text('NEUE RUNDE'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                resetRound();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey[300],
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(0.0),
-                  side: BorderSide(color: Colors.black),  // Fügen Sie diese Zeile hinzu
-                ),
-              ),
-              child: Icon(Icons.refresh),
-              ),
-            ],
           ),
-        ),
         ],
       ),
     );
@@ -860,8 +822,8 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
                 endRound(); // Starte die neue Runde, wenn bestätigt
               },
               style: ElevatedButton.styleFrom(
-                primary: Colors.red,
-                onPrimary: Colors.white,
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
               ),
               child: Text("Neue Runde starten"),
             ),
@@ -997,5 +959,115 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
       selectedMultiplier = pointsMultipliers[nextIndex];
       selectedValue = 'x${selectedMultiplier!.multiplier}';
     });
+  }
+}
+
+class PointsOverviewPage extends StatelessWidget {
+  final Map<String, int> totalPointsPerPlayer;
+  final List<RoundResult> roundResults;
+
+  PointsOverviewPage({required this.totalPointsPerPlayer, required this.roundResults});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Punkteübersicht'),
+      ),
+      body: Container(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'GESAMTPUNKTE',
+              style: TextStyle(
+                color: Colors.blueAccent,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: totalPointsPerPlayer.entries.map((entry) {
+                int displayedPoints = entry.value < 0 ? 0 : entry.value;
+
+                return ListTile(
+                  title: Text(
+                    '${entry.key}: $displayedPoints',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                      fontSize: 16,
+                    ),
+                  ),
+                  leading: Icon(
+                    Icons.trending_up,
+                    color: Colors.blueAccent,
+                  ),
+                );
+              }).toList(),
+            ),
+            Divider(
+              color: Colors.grey,
+            ),
+            Text(
+              'RUNDENERGEBNISSE',
+              style: TextStyle(
+                color: Colors.blueAccent,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: roundResults.length,
+                itemBuilder: (context, index) {
+                  RoundResult roundResult = roundResults[index];
+                  return Card(
+                    elevation: 5,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    child: Column(
+                      children: [
+                        ListTile(
+                          title: Text(
+                            'RUNDE ${roundResult.roundNumber}',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: roundResult.playerPoints.entries.map((entry) {
+                            int displayedPoints = entry.value < 0 ? 0 : entry.value;
+
+                            return ListTile(
+                              title: Text(
+                                '${entry.key}: $displayedPoints',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              leading: Icon(
+                                Icons.star,
+                                color: Colors.blueAccent,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
