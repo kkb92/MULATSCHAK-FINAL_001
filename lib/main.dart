@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-
 void main() {
   runApp(MyApp());
 }
@@ -284,15 +283,132 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
 
 
   void showRoundResults() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => PointsOverviewPage(
-          totalPointsPerPlayer: calculateTotalPointsPerPlayer(),
-          roundResults: roundResults,
-        ),
-      ),
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        Map<String, int> totalPointsPerPlayer = calculateTotalPointsPerPlayer();
+
+        return Dialog(
+          child: Container(
+            padding: EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'PUNKTEÜBERSICHT',
+                  style: TextStyle(
+                    color: Colors.blueAccent, // Futuristische Farbpalette
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
+                  ),
+                ),
+                SizedBox(height: 20.0),
+                // Gesamtpunkte
+                Text(
+                  'GESAMTPUNKTE',
+                  style: TextStyle(
+                    color: Colors.blueAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: totalPointsPerPlayer.entries.map((entry) {
+                    int displayedPoints = entry.value < 0 ? 0 : entry.value;
+
+                    return ListTile(
+                      title: Text(
+                        '${entry.key}: $displayedPoints',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                          fontSize: 16,
+                        ),
+                      ),
+                      leading: Icon(
+                        Icons.trending_up, // Beispielhaftes futuristisches Icon
+                        color: Colors.blueAccent,
+                      ),
+                    );
+                  }).toList(),
+                ),
+                Divider(
+                  color: Colors.grey,
+                ),
+                // Rundenergebnisse
+                Text(
+                  'RUNDENERGEBNISSE',
+                  style: TextStyle(
+                    color: Colors.blueAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: roundResults.length,
+                    itemBuilder: (context, index) {
+                      RoundResult roundResult = roundResults[index];
+                      return Card(
+                        elevation: 5, // Schatten für Tiefe
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        child: Column(
+                          children: [
+                            ListTile(
+                              title: Text(
+                                'RUNDE ${roundResult.roundNumber}',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: roundResult.playerPoints.entries.map((entry) {
+                                int displayedPoints = entry.value < 0 ? 0 : entry.value;
+
+                                return ListTile(
+                                  title: Text(
+                                    '${entry.key}: $displayedPoints',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  leading: Icon(
+                                    Icons.star, // Beispielhaftes futuristisches Icon
+                                    color: Colors.blueAccent,
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueAccent,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text('OK'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
+
 
   void _applyMPlus() {
     if (selectedPlayer != null && selectedMultiplier != null) {
@@ -961,117 +1077,3 @@ class _PlayersTablePageState extends State<PlayersTablePage> {
     });
   }
 }
-
-class PointsOverviewPage extends StatelessWidget {
-  final Map<String, int> totalPointsPerPlayer;
-  final List<RoundResult> roundResults;
-
-  PointsOverviewPage({required this.totalPointsPerPlayer, required this.roundResults});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Punkteübersicht'),
-      ),
-      body: Container(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'GESAMTPUNKTE',
-              style: TextStyle(
-                color: Colors.blueAccent,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: totalPointsPerPlayer.entries.map((entry) {
-                int displayedPoints = entry.value < 0 ? 0 : entry.value;
-
-                return ListTile(
-                  title: Text(
-                    '${entry.key}: $displayedPoints',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                      fontSize: 16,
-                    ),
-                  ),
-                  leading: Icon(
-                    Icons.trending_up,
-                    color: Colors.blueAccent,
-                  ),
-                );
-              }).toList(),
-            ),
-            Divider(
-              color: Colors.grey,
-            ),
-            Text(
-              'RUNDENERGEBNISSE',
-              style: TextStyle(
-                color: Colors.blueAccent,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: roundResults.length,
-                itemBuilder: (context, index) {
-                  RoundResult roundResult = roundResults[index];
-                  return Card(
-                    elevation: 5,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                    ),
-                    child: Column(
-                      children: [
-                        ListTile(
-                          title: Text(
-                            'RUNDE ${roundResult.roundNumber}',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: roundResult.playerPoints.entries.map((entry) {
-                            int displayedPoints = entry.value < 0 ? 0 : entry.value;
-
-                            return ListTile(
-                              title: Text(
-                                '${entry.key}: $displayedPoints',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              leading: Icon(
-                                Icons.star,
-                                color: Colors.blueAccent,
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-<<<<<<< HEAD
-}
-=======
-}
->>>>>>> 55f440ee71c2e3f74c5a2d1982b2a13875deacb1
